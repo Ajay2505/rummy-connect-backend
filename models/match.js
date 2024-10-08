@@ -48,6 +48,9 @@ const matchSchema = new Mongoose.Schema({
         type: String,
         required: true
     },
+    matchEndedAt: {
+        type: String,
+    },
     players: [
         {
             userName: { type: String, required: true },

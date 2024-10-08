@@ -24,131 +24,150 @@ that.getMatch = query => {
     });
 }
 
-that.setTimeEndedMatches = () => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // Pending
-            const now = Date.now();
+async function timeEndMatchesHelper({ io }) {
+    try {
+        // Pending
+        const now = Date.now();
 
-            const matches = await Match.aggregate([
-                {
-                    $match: {
-                        hasEnded: false,
-                    },
+        const matches = await Match.aggregate([
+            {
+                $match: {
+                    hasEnded: false,
                 },
-                {
-                    $addFields: {
-                        playersExceededTimeLimit: {
-                            $filter: {
-                                input: "$players",
-                                as: "player",
-                                cond: {
-                                    $and: [
-                                        { $eq: ["$$player.isMyTurn", true] },
-                                        {
-                                            $lt: [
-                                                {
-                                                    $add: [
-                                                        { $toLong: "$$player.turnStartedAt" }, // Directly use the timestamp
-                                                        { $multiply: ["$timeLimit", 1000] }
-                                                    ]
-                                                },
-                                                now + 2000
-                                            ]
-                                        }
-                                    ]
-                                }
+            },
+            {
+                $addFields: {
+                    playersExceededTimeLimit: {
+                        $filter: {
+                            input: "$players",
+                            as: "player",
+                            cond: {
+                                $and: [
+                                    { $eq: ["$$player.isMyTurn", true] },
+                                    {
+                                        $lt: [
+                                            {
+                                                $add: [
+                                                    { $toLong: "$$player.turnStartedAt" }, // Directly use the timestamp
+                                                    { $multiply: ["$timeLimit", 1000] }
+                                                ]
+                                            },
+                                            now + 2000
+                                        ]
+                                    }
+                                ]
                             }
                         }
                     }
-                },
-                {
-                    $match: {
-                        "playersExceededTimeLimit.0": { $exists: true },
+                }
+            },
+            {
+                $match: {
+                    "playersExceededTimeLimit.0": { $exists: true },
+                }
+            }
+        ]);
+        
+        if (!matches || matches.length === 0) {
+            return;
+        }
+
+        for(let i = 0; i < matches.length; i++) {
+            const matchData = matches[i];
+            
+            const match = await Match.findById(matchData._id); 
+            
+            const playerIdx = match.players.findIndex(player => player.isMyTurn === true);
+            if (playerIdx > -1) {
+                
+                const player = match.players[playerIdx];
+
+                match.players[playerIdx].playerStatus = "Lost";
+
+                const activePlayers = getActivePlayersCount(match.players);
+                const { currentIndex, nextIndex } = getPlayerTurns(match.players);
+
+                if (activePlayers < 2) {
+                    // MATCH END
+                    await setPlayersPoints({
+                        players: [
+                            {
+                                userName: match.players[nextIndex]?.userName,
+                                points: 0,
+                                inGame: false,
+                                matchEndState: "Last player standing wins!",
+                            },
+                            {
+                                userName: match.players[playerIdx].userName,
+                                points: 80,
+                                inGame: false,
+                                matchEndState: "Player has been removed from the game due to inactivity.",
+                            },
+                        ],
+                        matchID: match.matchID,
+                    });
+    
+                    await endMatch({ match });
+    
+                    io.to(match.roomID).emit("redirect", { redirectURL: "/results?match_id=" + match.matchID });
+                    // return reject({ redirectURL: "/results?match_id=" + match.matchID, roomID: match.roomID, player });
+                }
+
+                const dropCard = {};
+                // Player Drop Action
+                if (player.playerAction === "Drop") {
+                    const lastCardRotation = match.cardsRotation[match.cardsRotation.length - 1];                    
+                    if (lastCardRotation.updateType === "Pick" && lastCardRotation.userName === player.userName) {
+                        dropCard["card"] = lastCardRotation.card;
                     }
                 }
-            ]);
-            
-            if (!matches || matches.length === 0) {
-                return reject({ err: "No Matches Found!" });
-            }
+                                
+                const { card } = await setLeavePLayerState({ userName, matchID: match.matchID, dropCard: dropCard.card || "", matchEndState: "Player has been removed from the game due to inactivity." });
 
-            for(let i = 0; i < matches.length; i++) {
-                const matchData = matches[i];
+                if (card && card.length > 1) {
+                    match.droppedCards.push({
+                        card,
+                        roundNumber: 1,
+                        userName: player.userName,
+                    });
+                }
+
+                // Set Next Player Turn
+                if (currentIndex !== -1) {
+                    match.players[currentIndex].isMyTurn = false;
+                    match.players[currentIndex].turnStartedAt = null;
+                    match.players[currentIndex].playerAction = "None";
+                }
                 
-                const match = await Match.findById(matchData._id); 
-                
-                const playerIdx = match.players.findIndex(player => player.isMyTurn === true);
-                if (playerIdx > -1) {
-                    
-                    const player = match.players[playerIdx];
+                match.players[nextIndex].isMyTurn = true;
+                match.players[nextIndex].turnStartedAt = Date.now();
+                match.players[nextIndex].playerAction = "Pick";
 
-                    match.players[playerIdx].playerStatus = "Lost";
+                await match.save();
 
-                    const activePlayers = getActivePlayersCount(match.players);
-                    const { currentIndex, nextIndex } = getPlayerTurns(match.players);
+                io.to(match.roomID).emit("updates", { message: `${player.userName} has been removed from match!`, timeStamp: new Date() });
 
-                    if (activePlayers < 2) {
-                        // MATCH END
-                        await setPlayersPoints({
-                            players: [
-                                {
-                                    userName: match.players[nextIndex]?.userName,
-                                    points: 0,
-                                },
-                                {
-                                    userName: match.players[playerIdx].userName,
-                                    points: 80,
-                                },
-                            ],
-                            matchID: match.matchID,
-                        });
-        
-                        await endMatch({ match });
-        
-                        return reject({ redirectURL: "/results?match_id=" + match.matchID, roomID: match.roomID, player });
-                    }
+                if (card && card.length > 1) {
+                    io.to(match.roomID).emit("dropCardAnimate", { userName: player.userName, card });
+                }
 
-                    const dropCard = {};
-                    // Player Drop Action
-                    if (player.playerAction === "Drop") {
-                        const lastCardRotation = match.cardsRotation[match.cardsRotation.length - 1];                    
-                        if (lastCardRotation.updateType === "Pick" && lastCardRotation.userName === player.userName) {
-                            dropCard["card"] = lastCardRotation.card;
-                        }
-                    }
+                io.to(match.roomID).emit("setPlayerAction", { playerTurn:  match.players[nextIndex]?.userName, playerAction: "Pick", turnStartedAt:  match.players[nextIndex]?.turnStartedAt });
 
-                    const { card } = await setLeavePLayerState({ userName });
-
-                    if (card && card.length > 1) {
-                        match.droppedCards.push({
-                            card,
-                            roundNumber: 1,
-                            userName: player.userName,
-                        });
-                    }
-
-                    // Set Next Player Turn
-                    if (currentIndex !== -1) {
-                        match.players[currentIndex].isMyTurn = false;
-                        match.players[currentIndex].turnStartedAt = null;
-                        match.players[currentIndex].playerAction = "None";
-                    }
-                    
-                    match.players[nextIndex].isMyTurn = true;
-                    match.players[nextIndex].turnStartedAt = Date.now();
-                    match.players[nextIndex].playerAction = "Pick";
-
-                    await match.save();
-
-                    resolve({ player, nextPlayer: match.players[nextIndex], card });
-                }                
+                // resolve({ player, nextPlayer: match.players[nextIndex], card });
             }
-            return reject();
-        } catch (error) {
-            reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
-    });
+        return;
+    } catch (error) {
+        return;
+    } finally {
+        setTimeout(() => {
+            timeEndMatchesHelper({ io });
+        }, 5000);
+    }
+}
+
+that.setTimeEndedMatches = ({ io }) => {
+    timeEndMatchesHelper({ io });
 }
 
 that.createMatch = room => {
@@ -278,6 +297,7 @@ function endMatch({ match }) {
             }
 
             match.hasEnded = true;
+            match.matchEndedAt = Date.now();
             
             await sendPlayerBackToLobby({ matchID: match.matchID, roomID: match.roomID, players: match.players });
 
@@ -295,7 +315,7 @@ function endMatch({ match }) {
 that.matchDrop = ({ userName, matchID }) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const match = await Match.findOne({ matchID, "players.userName": userName });
+            const match = await Match.findOne({ matchID, "players.userName": userName, hasEnded: false });
             if (!match) {
                 throw new Error("Can't find the match you are looking for!");
             }
@@ -318,7 +338,12 @@ that.matchDrop = ({ userName, matchID }) => {
 
             if (activePlayers < 2) {
                 // MATCH END
-                await setPlayersPoints({ players: [{ userName: match.players[nextIndex]?.userName, points: 0 }], matchID: match.matchID });
+                await setPlayersPoints({
+                    players: [
+                        { userName: match.players[nextIndex]?.userName, points: 0, matchEndState: "Last player standing wins!", inGame: false },
+                    ],
+                    matchID: match.matchID,
+                });
 
                 await endMatch({ match });
 
@@ -364,7 +389,17 @@ that.setNextPlayerTurn = ({ matchID }) => {
 
             if (activePlayers < 2) {
                 // MATCH END
-                await setPlayersPoints({ players: [{ userName: match.players[nextIndex]?.userName, points: 0 }], matchID: match.matchID });
+                await setPlayersPoints({
+                    players: [
+                        {
+                            userName: match.players[nextIndex]?.userName,
+                            points: 0,
+                            inGame: false,
+                            matchEndState: "Last player standing wins!",
+                        },
+                    ],
+                    matchID: match.matchID,
+                });
 
                 await endMatch({ match });
 
@@ -373,7 +408,17 @@ that.setNextPlayerTurn = ({ matchID }) => {
     
             if (currentIndex === nextIndex) {
                 // Match END
-                await setPlayersPoints({ players: [{ userName: match.players[nextIndex]?.userName, points: 0 }], matchID: match.matchID });
+                await setPlayersPoints({
+                    players: [
+                        {
+                            userName: match.players[nextIndex]?.userName,
+                            points: 0,
+                            inGame: false,
+                            matchEndState: "Last player standing wins!",
+                        },
+                    ],
+                    matchID: match.matchID,
+                });
                 
                 await endMatch({ match });
                 
@@ -400,88 +445,10 @@ that.setNextPlayerTurn = ({ matchID }) => {
     });
 };
 
-// that.playerTimeOutMatch = ({ match }) => {
-//     return new Promise(async (resolve, reject) => {
-//         try {
-//             const playerIdx = match.players.findIndex(player => player.isMyTurn === true);
-//             if (playerIdx > -1) {
-                
-//                 const player = match.players[playerIdx];
-
-//                 match.players[playerIdx].playerStatus = "Lost";
-
-//                 const activePlayers = getActivePlayersCount(match.players);
-//                 const { currentIndex, nextIndex } = getPlayerTurns(match.players);
-
-//                 if (activePlayers < 2) {
-//                     // MATCH END
-//                     await setPlayersPoints({
-//                         players: [
-//                             {
-//                                 userName: match.players[nextIndex]?.userName,
-//                                 points: 0,
-//                             },
-//                             {
-//                                 userName: match.players[playerIdx].userName,
-//                                 points: 80,
-//                             },
-//                         ],
-//                         matchID: match.matchID,
-//                     });
-    
-//                     await endMatch({ match });
-    
-//                     return reject({ redirectURL: "/results?match_id=" + match.matchID, roomID: match.roomID, player });
-//                 }
-
-//                 const dropCard = {};
-//                 // Player Drop Action
-//                 if (player.playerAction === "Drop") {
-//                     const lastCardRotation = match.cardsRotation[match.cardsRotation.length - 1];                    
-//                     if (lastCardRotation.updateType === "Pick" && lastCardRotation.userName === player.userName) {
-//                         dropCard["card"] = lastCardRotation.card;
-//                     }
-//                 }
-
-//                 const { card } = await setLeavePLayerState({ userName });
-
-//                 if (card && card.length > 1) {
-//                     match.droppedCards.push({
-//                         card,
-//                         roundNumber: 1,
-//                         userName: player.userName,
-//                     });
-//                 }
-
-//                 // Set Next Player Turn
-//                 if (currentIndex !== -1) {
-//                     match.players[currentIndex].isMyTurn = false;
-//                     match.players[currentIndex].turnStartedAt = null;
-//                     match.players[currentIndex].playerAction = "None";
-//                 }
-                
-//                 match.players[nextIndex].isMyTurn = true;
-//                 match.players[nextIndex].turnStartedAt = Date.now();
-//                 match.players[nextIndex].playerAction = "Pick";
-
-//                 await match.save();
-
-//                 resolve({ player, nextPlayer: match.players[nextIndex], card });
-//             }
-
-//             return reject();
-//         } catch (error) {
-//             console.log(error, "playerTimeOutMatch");
-//             reject({ err: error.err || error.message || "Something went wrong. Please try again." });
-//             // reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
-//         }
-//     });
-// }
-
 that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
     return new Promise(async (resolve, reject) => {
         try {            
-            const match = await Match.findOne({ "players.userName": userName, matchID });
+            const match = await Match.findOne({ "players.userName": userName, matchID, hasEnded: false });
             if (!match) {
                 throw new Error("Sorry, Can't find the match you are looking for!");
             }
@@ -537,7 +504,7 @@ that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
 that.dropCard = ({ userName, matchID, card, timeStamp }) => {
     return new Promise(async (resolve, reject) => {
         try {
-            const match = await Match.findOne({ "players.userName": userName, matchID });
+            const match = await Match.findOne({ "players.userName": userName, matchID, hasEnded: false });
             if (!match) {
                 throw new Error("Something went wrong. Please try again!");
             }
@@ -613,7 +580,7 @@ that.matchShow = ({ userName, matchID, playerCards }) => {
                 throw new Error();
             }
 
-            const match = await Match.findOne({ "players.userName": userName, matchID });
+            const match = await Match.findOne({ "players.userName": userName, matchID, hasEnded: false });
 
             if (!match) {
                 throw new Error("Please join in a match!");
@@ -631,10 +598,21 @@ that.matchShow = ({ userName, matchID, playerCards }) => {
             }
 
             const finalCards = await validatePlayerCards({ userName, matchID, playerCards, joker: match.joker });
+            
+            await validateShow({ playerCards: [...finalCards], joker: match.joker, powerCards: match.powerCards });
 
-            await validateShow({ playerCards: finalCards, joker: match.joker, powerCards: match.powerCards });
-
-            await setPlayersPoints({ players: [{ userName: player.userName, points: 0 }], matchID: match.matchID });
+            await setPlayersPoints({
+                players: [
+                    {
+                        userName: player.userName,
+                        points: 0,
+                        inGame: false,
+                        matchEndState: "Completed a valid show!",
+                        playerCards,
+                    },
+                ],
+                matchID: match.matchID,
+            });
 
             // Match END
             await endMatch({ match });

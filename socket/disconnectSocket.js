@@ -10,7 +10,7 @@ const disconnectSocket = ({ socket, io }) => {
             const { room } = await getLobby({ "players.socketID": socket.id });
             const player = room.players.find(p => p.socketID.toString() === socket.id.toString());
 
-            // Room in Lobby            
+            // Room in Lobby   
             if (!room.currentMatch) {
                 const { players } = await leaveLobby({ roomID: room.roomID, userName: player.userName });
                 socket.leave(room.roomID);
@@ -18,7 +18,6 @@ const disconnectSocket = ({ socket, io }) => {
         
                 io.to(room.roomID).emit("updatePlayers", { players });
                         
-                // Emit a message to the room indicating the player has left
                 io.to(room.roomID).emit("updates", generateUpdate({ message: `${player.userName} has left the room` }));
                 return resolve();
             }

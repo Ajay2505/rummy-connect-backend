@@ -22,11 +22,15 @@ const playerStateSchema = new Mongoose.Schema({
         required: true,
         default: 80,
     },
+    playerCards: [[String]],
     inGame: {
         type: Boolean,
         required: true,
-        default: true,
-    }
+        default: true
+    },
+    matchEndState: {
+        type: String
+    },
 }, { timestamps: true, });
 
 playerStateSchema.methods.toJSON = function () {
@@ -34,9 +38,10 @@ playerStateSchema.methods.toJSON = function () {
 
     delete playerStateObject._id;
     delete playerStateObject.points;
-    delete playerStateObject.inGame;
     delete playerStateObject.createdAt;
     delete playerStateObject.updatedAt;
+    delete playerStateObject.playerCards;
+    delete playerStateObject.matchEndState;
 
     return playerStateObject;
 };

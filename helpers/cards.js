@@ -66,7 +66,7 @@ function getPowerCards(joker) {
     return powerCards;
 }
 
-const getCards = () => {  
+const getCards = () => {
     const cards = [...allCards];
     const randomIndex = Math.floor(Math.random() * cards.length);
     const joker = cards.splice(randomIndex, 1)[0];
@@ -287,7 +287,6 @@ that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
         }
     });
 }
-
 // Show validation END
 
 that.setAndValidateCards = ({ playerCards, cards, joker }) => {

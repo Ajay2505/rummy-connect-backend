@@ -1,3 +1,4 @@
+
 const that = {};
 
 that.generateUpdate = ({ message }) => {

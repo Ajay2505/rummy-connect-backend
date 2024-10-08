@@ -140,15 +140,15 @@ that.setDropPlayerPoints = ({ userName, matchID }) => {
             const playerState = await PlayerState.findOne({ userName, matchID, inGame: true });
             if (!playerState) {
                 throw new Error();
-            }
+            }            
             if (playerState.currentState && playerState.currentState.length) {
                 playerState.points = 40;
             } else {
                 playerState.points = 20;
             }
 
+            playerState.matchEndState = "Player dropped from match!";
             playerState.inGame = false;
-
             await playerState.save();
             resolve();
         } catch (error) {
@@ -169,26 +169,35 @@ that.setPlayersPoints = ({ players, matchID }) => {
                 const playerState = await PlayerState.findOne({ userName: player.userName, matchID, inGame: true });
                 if (playerState) {
                     playerState.points = player.points;
-                    playerState.inGame = false;
+                    playerState.matchEndState = player?.matchEndState; //Pending
+
+                    if (player.playerCards && player.playerCards.length > 1) {
+                        playerState.playerCards = player.playerCards.map(innerArray => 
+                            innerArray.map(obj => obj.card)
+                        );
+                    }
+                    
+                    playerState.inGame = player.inGame || false;
+
                     await playerState.save();
                 }
             }
 
             resolve();
         } catch (error) {
-            console.log(error, "setPlayersPoints");
+            console.log(error, "setPlayersPoints_");
             reject({ err: error.err || error.message || "Somthing went wrong. Please try again!" });
         }
     });
 }
 
-that.setLeavePLayerState = ({ userName, matchID, dropCard }) => {
+that.setLeavePLayerState = ({ userName, matchID, dropCard, matchEndState }) => {
     return new Promise(async (resolve, reject) => {
         try {
             const playerState = await PlayerState.findOne({ userName, matchID, inGame: true });
             if (playerState) {
                 playerState.points = 80;
-                playerState.inGame = false;
+                playerState.matchEndState = matchEndState;
                 const removedCard = {};
                 if (dropCard && dropCard.length > 1) {
                     const cards = playerState.currentState.splice(playerState?.currentState?.findIndex(c => c === dropCard), 1) || "Joker";
@@ -205,7 +214,7 @@ that.setLeavePLayerState = ({ userName, matchID, dropCard }) => {
     });
 }
 
-that.calcAndSetPlayerPoints = ({ userName, playerCards, match, joker }) => {
+that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
     return new Promise(async (resolve, reject) => {
         try {
             if (!userName || !match) {
@@ -215,25 +224,31 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, joker }) => {
             const playerState = await PlayerState.findOne({ userName, matchID: match.matchID, inGame: true });
             if (!playerState) {
                 throw new Error();
-            }
+            }            
 
             const finalCards = await setAndValidateCards({ 
                 playerCards: [...playerCards],
-                joker,
+                joker: match.joker,
                 cards: (playerState.currentState && playerState.currentState.length) ? 
                 [...playerState.currentState] : 
-                [...playerState.startState],  
+                [...playerState.startState],
             });
 
-            const { points } = await getPlayerPoints({ playerCards: finalCards, joker: match.joker, powerCards: match.powerCards });
-            
-            
+            const { points } = await getPlayerPoints({
+                playerCards: [...finalCards],
+                joker: match.joker,
+                powerCards: match.powerCards,
+            });
+                        
             playerState.points = points || 80;
-            playerState.inGame = false;            
-
+            playerState.inGame = inGame || false;
+            playerState.playerCards = finalCards.map(innerArray => 
+                innerArray.map(obj => obj?.card)
+            );
+            
             await playerState.save();
 
-            resolve();
+            resolve({ playerState });
         } catch (error) {
             console.log(error);
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
@@ -257,6 +272,8 @@ that.getPlayerResults = ({ matchID }) => {
             const playerStatesWithPoints = playerStates.map(playerState => {
                 const stateObj = playerState.toObject(); 
                 stateObj.points = playerState.points;    
+                stateObj.playerCards = playerState.playerCards;    
+                stateObj.matchEndState = playerState.matchEndState;
                 return stateObj;
             });
 

@@ -219,7 +219,8 @@ const matchSocket = ({ io, socket }) => {
 
             const { roomID, timeLimit, redirectURL } = await matchShow({ userName: player.userName, matchID: player.currState.collectionID, playerCards });
 
-            socket.to(roomID).emit("matchEndTimer", { redirectURL, timeLimit, showBy: player });
+            socket.to(roomID).emit("matchEndTimer", { redirectURL, timeLimit, showBy: player.userName });
+
             socket.emit("redirect", { redirectURL });
 
             // setTimeout(() => {
@@ -231,7 +232,7 @@ const matchSocket = ({ io, socket }) => {
         }
     });
 
-    socket.on("setMyPoints", async ({ token, playerCards }, callback) => {
+    socket.on("setMyPoints", async ({ token, playerCards, matchID }, callback) => {
         try {
             if (!token) {
                 throw new Error("Unauthorized Access!");
@@ -243,12 +244,20 @@ const matchSocket = ({ io, socket }) => {
 
             const { player } = await verifySocketToken({ token });
 
-            const { match } = await getMatch({ matchID: player.currState.collectionID, "players.userName": player.userName, hasEnded: true });
+            const { match } = await getMatch({ matchID, "players.userName": player.userName, hasEnded: true });            
+            
+            const { playerState } = await calcAndSetPlayerPoints({
+                userName: player.userName,
+                playerCards,
+                match,
+                inGame: Date.now() < (parseInt(match.matchEndedAt) + 1000 + (parseInt(match.timeLimit) * 1000)),
+            });
 
-            await calcAndSetPlayerPoints({ userName: player.userName, playerCards, match, joker: match.joker });
-
-            // socket.emit("updatePlayerPoints", )
+            setTimeout(() => {
+                io.to(match.roomID).emit("updatePlayerResult", { playerState });                
+            }, 1000);
             // Pending
+            // callback({ redirectURL: `/results?match_id=${match.matchID}` });
         } catch (error) {
             console.log(error, "Set My Points");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
