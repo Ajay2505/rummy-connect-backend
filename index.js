@@ -20,7 +20,14 @@ const resultsSocket = require("./socket/results.js");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server);
+const io = socketio(server, {
+    path: "/server",
+    cors: {
+        origin: "*", // Adjust as needed
+        methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    },
+});
 
 app.use(express.json());
 
