@@ -21,7 +21,7 @@ const resultsSocket = require("./socket/results.js");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
-    path: "/server",
+    path: "/server/ws",
     cors: {
         origin: "*", // Adjust as needed
         methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
