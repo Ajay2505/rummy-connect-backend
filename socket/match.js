@@ -97,10 +97,6 @@ const matchSocket = ({ io, socket }) => {
                 throw new Error("Unauthorized Access!");
             }
 
-            if (!timeStamp) {
-                throw new Error();
-            }
-
             const { player } = await verifySocketToken({ token });
 
             if (player.currState.playerIn !== "InGame") {
@@ -115,7 +111,7 @@ const matchSocket = ({ io, socket }) => {
 
             socket.to(roomID).emit("pickCardAnimate", { cardType, userName: player.userName });
             io.to(roomID).emit("updates", update);
-        } catch (error) {            
+        } catch (error) {
             return callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
 
@@ -127,7 +123,7 @@ const matchSocket = ({ io, socket }) => {
                 throw new Error("Unauthorized Access!");
             }
 
-            if (!timeStamp || !card) {
+            if (!card) {
                 throw new Error();
             }
 
