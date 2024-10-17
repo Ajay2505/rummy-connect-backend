@@ -91,7 +91,7 @@ const matchSocket = ({ io, socket }) => {
         }
     });
 
-    socket.on("pickCard", async ({ token, cardType, timeStamp }, callback) => {
+    socket.on("pickCard", async ({ token, cardType }, callback) => {
         try {
             if (!token) {
                 throw new Error("Unauthorized Access!");
@@ -107,7 +107,7 @@ const matchSocket = ({ io, socket }) => {
                 throw new Error("Please join a match!");
             }
 
-            const { roomID, update, card } = await pickCard({ userName: player.userName, matchID: player.currState.collectionID, cardType, timeStamp });
+            const { roomID, update, card } = await pickCard({ userName: player.userName, matchID: player.currState.collectionID, cardType });
             if (!card || !update || !roomID) {
                 return callback({ error: "Something went wrong!" });
             }
@@ -115,7 +115,7 @@ const matchSocket = ({ io, socket }) => {
 
             socket.to(roomID).emit("pickCardAnimate", { cardType, userName: player.userName });
             io.to(roomID).emit("updates", update);
-        } catch (error) {
+        } catch (error) {            
             return callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
 
