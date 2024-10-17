@@ -54,14 +54,6 @@ const playerSchema = new Mongoose.Schema({
         },
     ],
 }, { timestamps: true, });
-
-//   newUser.save().catch(error => {
-//     if (error.code === 11000) {
-//       console.log('Duplicate value error:', error.message);
-//     } else {
-//       console.error('Error saving user:', error);
-//     }
-//   });
   
 playerSchema.methods.toJSON = function () {
     const playerObject = this.toObject();

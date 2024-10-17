@@ -18,7 +18,7 @@ that.getMatch = query => {
             }
             resolve({ match });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong. Please try again later!", status: 500 });
         }
     });
@@ -26,7 +26,6 @@ that.getMatch = query => {
 
 async function timeEndMatchesHelper({ io }) {
     try {
-        // Pending
         const now = Date.now();
 
         const matches = await Match.aggregate([
@@ -218,7 +217,6 @@ that.createMatch = room => {
     
             resolve({ match });
         } catch (error) {
-            console.log(error, "that.createMatch");
             reject({ err: error.message || "Something went wrong! Please try again.", status: 500 });
         }
     });
@@ -251,7 +249,7 @@ that.joinMatch = ({ userName, matchID }) => {
     
             resolve({ match });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong! Please try again.", status: 500 });
         }
     });
@@ -439,13 +437,13 @@ that.setNextPlayerTurn = ({ matchID }) => {
             
             resolve({ nextPlayer: match.players[nextIndex] });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message });
         }
     });
 };
 
-that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
+that.pickCard = ({ userName, matchID, cardType }) => {
     return new Promise(async (resolve, reject) => {
         try {            
             const match = await Match.findOne({ "players.userName": userName, matchID, hasEnded: false });
@@ -455,7 +453,6 @@ that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
         
             const playerIdx = match.players.findIndex(player => player.userName.toString() === userName.toString());
             if (playerIdx === -1) {
-                console.log("No player");
                 throw new Error("Please join the match!");
             }
         
@@ -463,9 +460,7 @@ that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
         
             if (playerObj.isMyTurn !== true || playerObj.playerAction !== "Pick") {
                 throw new Error("Please wait for your turn!");
-            }
-        
-            // Time Validation Pending            
+            }                
 
             match.players[playerIdx].playerAction = "Drop";
             let card = "";
@@ -501,7 +496,7 @@ that.pickCard = ({ userName, matchID, timeStamp, cardType }) => {
     });
 }
 
-that.dropCard = ({ userName, matchID, card, timeStamp }) => {
+that.dropCard = ({ userName, matchID, card }) => {
     return new Promise(async (resolve, reject) => {
         try {
             const match = await Match.findOne({ "players.userName": userName, matchID, hasEnded: false });
@@ -518,9 +513,7 @@ that.dropCard = ({ userName, matchID, card, timeStamp }) => {
         
             if (playerObj.isMyTurn !== true || playerObj.playerAction !== "Drop") {
                 throw new Error("Please wait for your turn!");
-            }
-        
-            // Time Validation Pending
+            }        
         
             match.players[playerIdx].playerAction = "None";
         
@@ -619,7 +612,6 @@ that.matchShow = ({ userName, matchID, playerCards }) => {
 
             resolve({ roomID: match.roomID, timeLimit: match.timeLimit, redirectURL: `/results?match_id=${match.matchID}` });
         } catch (error) {
-            console.log(error, "that.matchShow");
             reject({ err: error.err || error.message || "Somthing went wrong. Please try again!" });
         }
     });

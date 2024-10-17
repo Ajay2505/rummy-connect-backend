@@ -84,7 +84,7 @@ router.get("/match-result", verifyToken, async (req, res) => {
 
         return res.status(200).send({ results, userName: req.player.userName, lobbyURL });
     } catch (error) {
-        console.log(error);
+        
         if (error?.status === 403) {
             return res.status(403).send({ redirectURL: error.redirectURL, textOnBtn: "Rejoin", message: error.message || "Rejoin Match?" });
         }

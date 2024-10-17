@@ -25,7 +25,7 @@ const lobbySocket = ({ io, socket}) => {
 
             socket.to(room.roomID).emit("updates", generateUpdate({ message: `${player.userName} has joined the room` }));
         } catch (error) {
-            console.log(error);
+            
             return callback(error.err || "Please join in a room!");
         }
     });
@@ -44,8 +44,8 @@ const lobbySocket = ({ io, socket}) => {
                 throw new Error();
             }
 
-            socket.to(room.roomID).emit("recieveMessage", { message, timeStamp: new Date().toLocaleString(), userName: room.players[playerIndex].userName });
-            callback({ message, timeStamp: new Date().toLocaleString(), userName: room.players[playerIndex].userName });
+            socket.to(room.roomID).emit("recieveMessage", { message, timeStamp: new Date().toLocaleTimeString(), userName: room.players[playerIndex].userName });
+            callback({ message, timeStamp: new Date().toLocaleTimeString(), userName: room.players[playerIndex].userName });
         } catch (error) {
             callback({ err: error.message || "Something went wrong. Please try again!" });
         }

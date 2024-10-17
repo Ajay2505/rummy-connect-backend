@@ -36,7 +36,6 @@ that.verifyToken = async (req, res, next) => {
     
             next();
         } catch (err) {
-            console.log(err);
             return res.status(401).send({ message: "Unauthorized Access!" });            
         }
     } else {
@@ -45,7 +44,7 @@ that.verifyToken = async (req, res, next) => {
 
             next();
         } catch (error) {
-            console.log(error);
+            
             return res.status(500).send("Something went wrong!");
         }        
     } 

@@ -243,7 +243,6 @@ that.validateShow = ({ playerCards, joker, powerCards }) => {
             }
             return resolve("Valid Show");
         } catch (error) {
-            console.log(error, "validateShow");
             return reject({ err: error.message || "Invalid Show!" });
         }
     });
@@ -282,7 +281,6 @@ that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
             // Pending Verification
             resolve({ points });
         } catch (error) {
-            console.log(error, "getPlayerPoints");
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });

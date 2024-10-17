@@ -15,7 +15,7 @@ that.getPlayer = (query) => {
     
             resolve({ player });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong!" });
         }
     });
@@ -34,7 +34,7 @@ that.addGuest = () => {
             
             resolve({ player, token });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.err || error.message || "Something went wrong!" });
         }
     });
@@ -76,7 +76,7 @@ that.resetPlayerCurrState = (query) => {
             
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.err || error.message || "Seomthing went wrong. Please try again!" });
         }
     });
@@ -99,7 +99,7 @@ that.updatePlayersCurrState = ({ players, playerIn, collectionID }) => {
 
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message });
         }
     });
@@ -125,7 +125,7 @@ that.sendPlayerBackToLobby = ({ players, matchID, roomID }) => {
 
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.err || error.message || "Something went wrong", status: error.status || 500 });            
         }
     });

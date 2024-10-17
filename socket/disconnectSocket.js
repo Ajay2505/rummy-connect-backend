@@ -4,8 +4,7 @@ const { resetPlayerCurrState } = require("../controllers/player");
 const { generateUpdate } = require("../helpers/utils");
 
 const disconnectSocket = ({ socket, io }) => {
-    console.log("Disconnect", socket.id);
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async resolve => {
         try {
             const { room } = await getLobby({ "players.socketID": socket.id });
             const player = room.players.find(p => p.socketID.toString() === socket.id.toString());
@@ -38,7 +37,6 @@ const disconnectSocket = ({ socket, io }) => {
             
             resolve();
         } catch (error) {
-            console.log(error, "disc");
             resolve();
         }
     });

@@ -38,7 +38,7 @@ that.createLobby = ({ query, player }) => {
             
             resolve({ room });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: "Something went wrong. Please try again later!" });
         }
     });
@@ -53,7 +53,7 @@ that.getLobby = query => {
             }
             resolve({ room });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: "Something went wrong. Please try again later!", status: 500 });
         }
     });
@@ -136,7 +136,7 @@ that.addSocketID = ({ socketID, userName, roomID }) => {
 
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message });
         }
     });
@@ -160,7 +160,6 @@ that.setCurrMatch = ({ room, matchID }) => {
     
             resolve();
         } catch (error) {
-            console.log(error, "setCurr");
             reject({ err: error.message || "Something went wrong. Please try again!", status: 500 });
         }
     });
@@ -190,7 +189,6 @@ that.leaveLobby = ({ roomID, userName }) => {
 
             resolve({ players: room.players || [], player });
         } catch (error) {
-            console.log(error.message);
             reject({ err: error.message || "Something went wrong. Please try again!" });
         }
     });

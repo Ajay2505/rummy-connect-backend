@@ -39,7 +39,7 @@ that.getPlayerState = ({ userName, matchID }) => {
     
             resolve({ playerState });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong. Please try again!", status: 500 });
         }
     });
@@ -68,7 +68,6 @@ that.validatePlayerCards = ({ userName, matchID, playerCards, joker }) => {
             resolve(finalCards);
 
         } catch (error) {
-            console.log(error, "validatePlayerCards");
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -95,7 +94,7 @@ that.appendPickedCard = ({ userName, matchID, card }) => {
     
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -128,7 +127,7 @@ that.dropPlayerCard = ({ userName, matchID, card }) => {
     
             resolve();
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -185,7 +184,6 @@ that.setPlayersPoints = ({ players, matchID }) => {
 
             resolve();
         } catch (error) {
-            console.log(error, "setPlayersPoints_");
             reject({ err: error.err || error.message || "Somthing went wrong. Please try again!" });
         }
     });
@@ -250,7 +248,7 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
 
             resolve({ playerState });
         } catch (error) {
-            console.log(error);
+            
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });

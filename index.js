@@ -3,7 +3,7 @@ require("dotenv").config();
 const http = require("http");
 const express = require("express");
 const socketio = require("socket.io");
-
+const path = require('path');
 const cors = require("cors");
 
 const connectToDataBase = require("./config/database");
@@ -18,34 +18,41 @@ const matchSocket = require("./socket/match.js");
 const { setTimeEndedMatches } = require("./controllers/match.js");
 const resultsSocket = require("./socket/results.js");
 
+const allowedOrigins = process.env.FRONTEND_ORIGIN.split(',');
+
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server, {
-    path: "/server/ws",
-    cors: {
-        origin: "*", // Adjust as needed
+const io = socketio(server, { path: '/ws',
+ cors: {
+        origin: allowedOrigins,
         methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
     },
-});
+ });
 
 app.use(express.json());
 
 connectToDataBase();
 
 const corsOptions = {
-    origin: '*', // Allow requests from this origin
+    origin: allowedOrigins,
     methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
-app.use('/server', loginRouter);
-app.use('/server', lobbyRouter);
-app.use('/server', matchRouter);
+app.use(express.static(path.join(__dirname, 'build')));
+
+app.get('/', function (req, res) {
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
+app.use('/', loginRouter);
+app.use('/', lobbyRouter);
+app.use('/', matchRouter);
 
 io.on("connection", socket => {
-    console.log("Connected", socket.id);
+    // console.log("Connected", socket.id);
 
     setTimeEndedMatches({ io });
 
