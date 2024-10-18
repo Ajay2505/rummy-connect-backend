@@ -3,7 +3,7 @@ require("dotenv").config();
 const http = require("http");
 const express = require("express");
 const socketio = require("socket.io");
-const path = require('path');
+// const path = require('path');
 const cors = require("cors");
 
 const connectToDataBase = require("./config/database");
@@ -41,11 +41,11 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.static(path.join(__dirname, 'build')));
+// app.use(express.static(path.join(__dirname, 'build')));
 
-app.get('/', function (req, res) {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
-});
+// app.get('/', function (req, res) {
+//     res.sendFile(path.join(__dirname, 'build', 'index.html'));
+// });
 
 app.use('/', loginRouter);
 app.use('/', lobbyRouter);

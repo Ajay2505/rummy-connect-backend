@@ -86,7 +86,7 @@ const matchSocket = ({ io, socket }) => {
 
             io.to(match.roomID).emit("updatePlayers", { players: match.players });
             io.to(match.roomID).emit("updates", generateUpdate({ message: `${player.userName} has left the match` }));
-        } catch (error) {
+        } catch (error) {            
             // return callback(error.err || error.message || "Please join in a match!");
         }
     });
