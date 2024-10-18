@@ -18,7 +18,6 @@ that.getMatch = query => {
             }
             resolve({ match });
         } catch (error) {
-            
             reject({ err: error.message || "Something went wrong. Please try again later!", status: 500 });
         }
     });
@@ -26,7 +25,7 @@ that.getMatch = query => {
 
 async function timeEndMatchesHelper({ io }) {
     try {
-        const now = Date.now();
+        const now = Date.now() + 3500;
 
         const matches = await Match.aggregate([
             {
@@ -47,11 +46,11 @@ async function timeEndMatchesHelper({ io }) {
                                         $lt: [
                                             {
                                                 $add: [
-                                                    { $toLong: "$$player.turnStartedAt" }, // Directly use the timestamp
+                                                    { $toLong: "$$player.turnStartedAt" },
                                                     { $multiply: ["$timeLimit", 1000] }
                                                 ]
                                             },
-                                            now + 2000
+                                            now
                                         ]
                                     }
                                 ]

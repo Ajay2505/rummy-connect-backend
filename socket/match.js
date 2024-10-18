@@ -58,6 +58,7 @@ const matchSocket = ({ io, socket }) => {
             socket.to(match.roomID).emit("updates", generateUpdate({ message: `${player.userName} has joined the match` }));
 
         } catch (error) {
+            console.log(error, "socket - joinMatch");
             return callback(error.err || error.message || "Please join in a room!");
         }
     });
@@ -87,6 +88,7 @@ const matchSocket = ({ io, socket }) => {
             io.to(match.roomID).emit("updatePlayers", { players: match.players });
             io.to(match.roomID).emit("updates", generateUpdate({ message: `${player.userName} has left the match` }));
         } catch (error) {            
+            console.log(error, "socket - leaveMatch");
             // return callback(error.err || error.message || "Please join in a match!");
         }
     });
@@ -112,6 +114,7 @@ const matchSocket = ({ io, socket }) => {
             socket.to(roomID).emit("pickCardAnimate", { cardType, userName: player.userName });
             io.to(roomID).emit("updates", update);
         } catch (error) {
+            console.log(error, "socket - pickCard");
             return callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
 
@@ -149,6 +152,7 @@ const matchSocket = ({ io, socket }) => {
 
             callback();
         } catch (error) {
+            console.log(error, "socket - dropCard");
             if (error.redirectURL && error.roomID) {
                 io.to(error.roomID).emit("redirect", { redirectURL: error.redirectURL });
                 return;
@@ -182,6 +186,7 @@ const matchSocket = ({ io, socket }) => {
 
             callback("");
         } catch (error) {
+            console.log(error, "socket - matchDrop");
             if (error.redirectURL && error.player && error.roomID) {
                 const update = generateUpdate({ message: `${error.player.userName} has dropped from match!` });
                 io.to(error.roomID).emit("updates", update);
@@ -218,6 +223,7 @@ const matchSocket = ({ io, socket }) => {
             //     io.to(roomID).emit("redirect", { redirectURL });
             // }, parseInt(timeLimit) * 1000);
         } catch (error) {
+            console.log(error, "socket - matchShow");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -249,6 +255,7 @@ const matchSocket = ({ io, socket }) => {
             // Pending
             // callback({ redirectURL: `/results?match_id=${match.matchID}` });
         } catch (error) {
+            console.log(error, "socket - setMyPoints");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });

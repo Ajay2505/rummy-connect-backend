@@ -47,7 +47,7 @@ app.use(cors(corsOptions));
 //     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 // });
 
-app.use('/', loginRouter);
+// app.use('/', loginRouter);
 app.use('/', lobbyRouter);
 app.use('/', matchRouter);
 
