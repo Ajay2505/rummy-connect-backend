@@ -558,7 +558,7 @@ that.getMatchResults = ({ userName, matchID }) => {
             
             const { playerStates } = await getPlayerResults({ matchID: match.matchID });
 
-            resolve({ results: playerStates, lobbyURL: `/room?room_id=${match.roomID}` });
+            resolve({ results: playerStates, lobbyURL: `/room?room_id=${match.roomID}`, roomID: match.roomID });
         } catch (error) {
             reject({ err: error.err || error.message || "Something went wrong. Please try again!", status: error.status || 500 });
         }

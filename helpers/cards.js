@@ -279,7 +279,7 @@ that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
                 }
             });
             // Pending Verification
-            resolve({ points });
+            resolve({ points: points > 80 ? 80 : points });
         } catch (error) {
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }

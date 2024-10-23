@@ -8,7 +8,7 @@ const cors = require("cors");
 
 const connectToDataBase = require("./config/database");
 
-const loginRouter = require("./routers/login.js");
+// const loginRouter = require("./routers/login.js");
 const lobbyRouter = require("./routers/lobby.js");
 const matchRouter = require("./routers/match.js");
 

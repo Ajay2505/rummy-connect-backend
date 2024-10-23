@@ -2,7 +2,7 @@ const { addSocketID } = require("../controllers/lobby");
 const { verifySocketToken } = require("../helpers/jwt");
 const { generateUpdate } = require("../helpers/utils");
 const { resetPlayerCurrState } = require("../controllers/player");
-const { calcAndSetPlayerPoints } = require("../controllers/playerState");
+const { setMatchEndPlayerStates } = require("../controllers/playerState");
 const { getMatch, setNextPlayerTurn, pickCard, dropCard, matchDrop, matchShow } = require("../controllers/match");
 
 const matchSocket = ({ io, socket }) => {
@@ -58,7 +58,6 @@ const matchSocket = ({ io, socket }) => {
             socket.to(match.roomID).emit("updates", generateUpdate({ message: `${player.userName} has joined the match` }));
 
         } catch (error) {
-            console.log(error, "socket - joinMatch");
             return callback(error.err || error.message || "Please join in a room!");
         }
     });
@@ -87,7 +86,7 @@ const matchSocket = ({ io, socket }) => {
 
             io.to(match.roomID).emit("updatePlayers", { players: match.players });
             io.to(match.roomID).emit("updates", generateUpdate({ message: `${player.userName} has left the match` }));
-        } catch (error) {            
+        } catch (error) {
             console.log(error, "socket - leaveMatch");
             // return callback(error.err || error.message || "Please join in a match!");
         }
@@ -114,7 +113,6 @@ const matchSocket = ({ io, socket }) => {
             socket.to(roomID).emit("pickCardAnimate", { cardType, userName: player.userName });
             io.to(roomID).emit("updates", update);
         } catch (error) {
-            console.log(error, "socket - pickCard");
             return callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
 
@@ -152,7 +150,6 @@ const matchSocket = ({ io, socket }) => {
 
             callback();
         } catch (error) {
-            console.log(error, "socket - dropCard");
             if (error.redirectURL && error.roomID) {
                 io.to(error.roomID).emit("redirect", { redirectURL: error.redirectURL });
                 return;
@@ -186,7 +183,6 @@ const matchSocket = ({ io, socket }) => {
 
             callback("");
         } catch (error) {
-            console.log(error, "socket - matchDrop");
             if (error.redirectURL && error.player && error.roomID) {
                 const update = generateUpdate({ message: `${error.player.userName} has dropped from match!` });
                 io.to(error.roomID).emit("updates", update);
@@ -213,52 +209,28 @@ const matchSocket = ({ io, socket }) => {
                 throw new Error("Please join a match!");
             }
 
-            const { roomID, timeLimit, redirectURL } = await matchShow({ userName: player.userName, matchID: player.currState.collectionID, playerCards });
+            const matchID = player.currState.collectionID;
+
+            const { roomID, timeLimit, redirectURL } = await matchShow({ userName: player.userName, matchID, playerCards });
 
             socket.to(roomID).emit("matchEndTimer", { redirectURL, timeLimit, showBy: player.userName });
 
             socket.emit("redirect", { redirectURL });
 
-            // setTimeout(() => {
-            //     io.to(roomID).emit("redirect", { redirectURL });
-            // }, parseInt(timeLimit) * 1000);
+            setTimeout(async () => {
+                try {
+                    const { playerStates } = await setMatchEndPlayerStates({ matchID });
+
+                    io.to("viewResults" + matchID).emit("updatePlayersResult", { playerStates });
+
+                } catch (error) {
+                    console.log(error, "setMatchEndPlayerStates");
+                }
+            }, (parseInt(timeLimit) * 1000));
         } catch (error) {
-            console.log(error, "socket - matchShow");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
-    });
-
-    socket.on("setMyPoints", async ({ token, playerCards, matchID }, callback) => {
-        try {
-            if (!token) {
-                throw new Error("Unauthorized Access!");
-            }
-
-            if (!playerCards) {
-                throw new Error();
-            }
-
-            const { player } = await verifySocketToken({ token });
-
-            const { match } = await getMatch({ matchID, "players.userName": player.userName, hasEnded: true });            
-            
-            const { playerState } = await calcAndSetPlayerPoints({
-                userName: player.userName,
-                playerCards,
-                match,
-                inGame: Date.now() < (parseInt(match.matchEndedAt) + 1000 + (parseInt(match.timeLimit) * 1000)),
-            });
-
-            setTimeout(() => {
-                io.to(match.roomID).emit("updatePlayerResult", { playerState });                
-            }, 1000);
-            // Pending
-            // callback({ redirectURL: `/results?match_id=${match.matchID}` });
-        } catch (error) {
-            console.log(error, "socket - setMyPoints");
-            callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
-        }
-    });
+    });    
 }
 
 module.exports = matchSocket;

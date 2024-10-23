@@ -246,9 +246,13 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
             
             await playerState.save();
 
-            resolve({ playerState });
+            const stateObj = playerState.toObject(); 
+            stateObj.points = playerState.points;
+            stateObj.playerCards = playerState.playerCards;
+            stateObj.matchEndState = playerState.matchEndState;
+
+            resolve({ playerState: stateObj });
         } catch (error) {
-            
             reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -278,6 +282,36 @@ that.getPlayerResults = ({ matchID }) => {
             resolve({ playerStates: playerStatesWithPoints });
         } catch (error) {
             reject({ err: error.message || "Something went wrong. Please try again!", status: 500 });
+        }
+    });
+}
+
+that.setMatchEndPlayerStates = ({ matchID }) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const playersInGame = await PlayerState.find({ matchID, inGame: true });
+            
+            if (playersInGame.length === 0) {
+                return reject({ message: "No players found in the game." });
+            }
+
+            await PlayerState.updateMany({ matchID, inGame: true }, { $set: { inGame: false } });
+
+            const updatedPlayerStates = [];
+
+            playersInGame.forEach(player => {
+                const stateObj = player.toObject(); 
+                stateObj.points = player.points;
+                stateObj.playerCards = player.playerCards;
+                stateObj.matchEndState = player.matchEndState;
+                stateObj.inGame = false;
+
+                updatedPlayerStates.push(stateObj);
+            });
+
+            resolve({ playerStates: updatedPlayerStates });
+        } catch (error) {
+            reject({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
 }

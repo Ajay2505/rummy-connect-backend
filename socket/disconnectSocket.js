@@ -23,6 +23,9 @@ const disconnectSocket = ({ socket, io }) => {
 
             const { match } = await getMatch({ matchID: room.currentMatch, "players.userName": player.userName });
             const playerIdx = match.players.findIndex(p => p.userName === player.userName);
+            if (match.hasEnded) {
+                return resolve();
+            }
             if (match.players[playerIdx].playerStatus !== "Lost") {
                 match.players[playerIdx].playerStatus = "Offline";                
                 await match.save();
@@ -38,6 +41,8 @@ const disconnectSocket = ({ socket, io }) => {
             resolve();
         } catch (error) {
             resolve();
+        } finally {
+            socket.leaveAll();
         }
     });
 
