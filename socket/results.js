@@ -21,6 +21,7 @@ const resultsSocket = ({ io, socket }) => {
     
             callback({ results, userName: player.userName, lobbyURL, roomID, matchID });
         } catch (error) {
+            console.log(error, "view-result");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -52,6 +53,7 @@ const resultsSocket = ({ io, socket }) => {
                 io.to("viewResults" + match.matchID).emit("updatePlayersResult", { playerStates: [playerState] });
             }, 1000);
         } catch (error) {
+            console.log(error, "setMyPoints");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });
@@ -66,7 +68,7 @@ const resultsSocket = ({ io, socket }) => {
                 throw new Error("Sorry can't find the match you are looking for!");
             }
 
-            const { player } = await verifySocketToken({ token });
+            await verifySocketToken({ token });
 
             socket.leave("viewResults" + matchID);
         } catch (error) {

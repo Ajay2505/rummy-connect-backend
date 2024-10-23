@@ -113,6 +113,7 @@ const matchSocket = ({ io, socket }) => {
             socket.to(roomID).emit("pickCardAnimate", { cardType, userName: player.userName });
             io.to(roomID).emit("updates", update);
         } catch (error) {
+            console.log(error, "pickCard");
             return callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
 
@@ -149,7 +150,8 @@ const matchSocket = ({ io, socket }) => {
             io.to(roomID).emit("setPlayerAction", { playerTurn: nextPlayer.userName, playerAction: "Pick", turnStartedAt: nextPlayer.turnStartedAt });
 
             callback();
-        } catch (error) {
+        } catch (error) {     
+            console.log(error, "dropCard");
             if (error.redirectURL && error.roomID) {
                 io.to(error.roomID).emit("redirect", { redirectURL: error.redirectURL });
                 return;
@@ -228,6 +230,7 @@ const matchSocket = ({ io, socket }) => {
                 }
             }, (parseInt(timeLimit) * 1000));
         } catch (error) {
+            console.log(error, "matchShow");
             callback({ err: error.err || error.message || "Something went wrong. Please try again!" });
         }
     });    
