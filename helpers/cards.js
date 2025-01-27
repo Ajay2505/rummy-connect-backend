@@ -107,99 +107,143 @@ that.setMatchCards = playersCount => {
 
 // Show Valiation Start
 
-function getMainSuit({ cards, powerCards }) {
-    let mainSuit = cards[0].cardSuitValue.suit;
+function isValidSeqSuit({ cards }) {
+    let mainSuit = "";
+    let seqNormalCardsCount = 0;
     for (let i = 0; i < cards.length; i++) {
         const cardObj = cards[i];
-        if (!powerCards.includes(cardObj.card)) {
-            return cardObj.cardSuitValue.suit;
-        }
-    }
-    return mainSuit;
-}
-
-function isValidSeqSuit({ cards, powerCards, mainSuit }) {
-    let normalCardsCount = 0;
-    for (let i = 0; i < cards.length; i++) {
-        const cardObj = cards[i];
-        if (!powerCards.includes(cardObj.card)) {
-            normalCardsCount++;
+        if (!cardObj.isPowerCard) {
+            seqNormalCardsCount++;
+            if (!mainSuit) {
+                mainSuit = cardObj.cardSuitValue.suit;
+            }
             if (cardObj.cardSuitValue.suit !== mainSuit) {
-                return false;
+                return { isValid: false };
             }
         }
     }
 
     // Minimum 2 cards must be normal
-    if (normalCardsCount < 2) {
-        return false;
+    if (seqNormalCardsCount < 2) {
+        return { isValid: false, err: "Minimum 2 cards must be normal in a sequence (Not jokers)" };
     }
 
-    return true;
+    return { isValid: true };
 }
 
-function getAceIndex({ cards, powerCards }) {
+function getAceIndex({ cards }) {
     for (let i = 0; i < cards.length; i++) {
         const cardObj = cards[i];
-        if (!powerCards.includes(cardObj.card) && cardObj.cardSuitValue.value === 1) {
+        if (!cardObj.isPowerCard && cardObj.cardSuitValue.value === 1) {
             return i;
         }
     }
     return -1;
 }
 
-function isValidSequence({ cards, powerCards }) {
-    let powerCardCount = 0;
-    let prevCardValue = -4;
-    for(let i = 0; i < cards.length; i++) {
-        if (!powerCards.includes(cards[i].card)) {
-            if (prevCardValue < 1) {
-                prevCardValue = cards[i].cardSuitValue.value;
+
+function sequenceSorter({ cards }) {
+    const seqNormalCards = cards.filter(card => !card.isPowerCard);
+    const seqPowerCards = cards.filter(card => card.isPowerCard);
+
+    seqNormalCards.sort((a, b) => a.cardSuitValue.value - b.cardSuitValue.value);
+
+    const sortedArray = [];
+    let prevValue = null;
+
+    for (let i = 0; i < seqNormalCards.length; i++) {
+        const currentCard = seqNormalCards[i];
+
+        if (prevValue !== null) {
+            const expectedValue = prevValue + 1;
+            while (expectedValue < currentCard.cardSuitValue.value && seqPowerCards.length > 0) {
+                const powerCard = seqPowerCards.shift();
+                sortedArray.push(powerCard);
+                prevValue = expectedValue;
             }
-            if ((prevCardValue > 0) && (i + 1 < cards.length) && 
-                (!powerCards.includes(cards[i + 1].card)) && 
-                (prevCardValue + 1 !== cards[i + 1].cardSuitValue.value)) {
-                return { isValid: false };
-            }
-        } else {
-            powerCardCount++;
         }
-        prevCardValue++;
+
+        sortedArray.push(currentCard);
+        prevValue = currentCard.cardSuitValue.value;
     }
 
-    return { isValid: true, isPure: powerCardCount < 1 }
+    sortedArray.push(...seqPowerCards);
+    
+    return sortedArray;
 }
 
-function validateSequence({ cards, powerCards, mainSuit }) {
-    const validSeqSuits = isValidSeqSuit({ cards, powerCards, mainSuit });
-    if (!validSeqSuits) {
-        return { isValid: false };
+function isValidSequence({ cards }) {
+    let prevValue = null; // Track the previous card value
+    let powerCardCount = 0; // Count available power cards
+    let isPure = true;
+
+    for (const card of cards) {
+        if (card.isPowerCard) {
+            powerCardCount++;
+            isPure = false;
+            continue; // Skip power cards for now
+        }
+
+        if (prevValue !== null) {
+            const gap = card.cardSuitValue.value - prevValue;
+
+            if (gap === 0) {
+                // Duplicate values are not allowed
+                return { isValid: false, isPure: false };
+            }
+
+            if (gap > 1) {
+                // Check if we have enough power cards to fill the gap
+                if (gap - 1 > powerCardCount) {
+                    return { isValid: false, isPure: powerCardCount === 0 };
+                }
+                // Use power cards to fill the gap
+                powerCardCount -= gap - 1;
+            }
+        }
+
+        // Update previous value
+        prevValue = card.cardSuitValue.value;
     }
-    const aceIndex = getAceIndex({ cards, powerCards });
+
+    return { isValid: true, isPure };
+}
+
+function validateSequence({ cards }) {
+    const validSeqSuits = isValidSeqSuit({ cards });
+    if (!validSeqSuits.isValid) {
+        return { isValid: false, err: validSeqSuits?.err || "" };
+    }
+    
+    const sortedArr = sequenceSorter({ cards });    
+
+    const aceIndex = getAceIndex({ cards: sortedArr });
+
     if (aceIndex !== -1) {
-        const res = isValidSequence({ cards, powerCards });
+        const res = isValidSequence({ cards: sortedArr });
         if (res.isValid === true) {
             return res;
         }
-        cards[aceIndex].cardSuitValue.value = 14;
-        return isValidSequence({ cards, powerCards });        
+        sortedArr[aceIndex].cardSuitValue.value = 14;
+        
+        return isValidSequence({ cards: sequenceSorter({ cards: sortedArr }) });
     }
-    return isValidSequence({ cards, powerCards });
+    return isValidSequence({ cards: sortedArr });
 }
 
-function validateSet({ cards, powerCards }) {
+function validateSet({ cards }) {
     const setSuits = [];
     let setValue = -1;    
     for(let i = 0; i < cards.length; i++) {
         const cardObj = cards[i];
-        if (!powerCards.includes(cardObj.card)) {
+        if (!cardObj.isPowerCard) {
             if (setValue < 1) {
                 setValue = cardObj.cardSuitValue.value;
             } else if (cardObj.cardSuitValue.value !== setValue) {
                 return { isValid: false };
             }
             if (setSuits.includes(cardObj.cardSuitValue.suit)) {
-                return { isValid: false };                
+                return { isValid: false };
             } else {
                 setSuits.push(cardObj.cardSuitValue.suit);
             }
@@ -209,23 +253,29 @@ function validateSet({ cards, powerCards }) {
     return { isValid: true };
 }
 
-that.validateShow = ({ playerCards, joker, powerCards }) => {
+that.validateShow = ({ playerCards }) => {
     let hasPureSequence = false;
     let sequenceCount = 0;
     let singleCardGroup = 0;
     return new Promise((resolve, reject) => {
         try {
-            playerCards.forEach(cards => {
-                if (singleCardGroup > 1) {
+            playerCards.forEach(cards => {   
+                if (cards.length < 1) {
                     throw new Error();
                 }
-                if (cards.length < 3) {
+                if (cards.length === 1) {
                     singleCardGroup++;
-                } else {
-                    const mainSuit = getMainSuit({ cards, powerCards });
-                    const seq = validateSequence({ cards, powerCards, joker, mainSuit });
-                    if (seq?.isValid === false) {                    
-                        const set = validateSet({ cards, powerCards, joker });
+                }
+                if (singleCardGroup > 1 || cards.length === 2) {
+                    throw new Error();
+                } 
+                if (cards.length > 2) {
+                    const seq = validateSequence({ cards });
+                    if (seq.isValid === false) {
+                        if (seq?.err) {
+                            throw new Error(seq.err);
+                        }
+                        const set = validateSet({ cards });
                         if (set?.isValid === false) {
                             throw new Error();
                         }
@@ -238,8 +288,11 @@ that.validateShow = ({ playerCards, joker, powerCards }) => {
                     }
                 }
             });
-            if (!hasPureSequence) {
-                throw new Error("Minimum one sequence must be pure!");
+            if (singleCardGroup > 1) {
+                throw new Error();
+            }
+            if (sequenceCount > 0 && !hasPureSequence) {
+                throw new Error("Minimum one sequence must be pure! (Without Joker)");
             }
             return resolve("Valid Show");
         } catch (error) {
@@ -248,10 +301,10 @@ that.validateShow = ({ playerCards, joker, powerCards }) => {
     });
 }
 
-that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
+that.getPlayerPoints = ({ playerCards }) => {
     return new Promise(async (resolve, reject) => {
         try {
-            if (!playerCards || !joker || !powerCards) {
+            if (!playerCards) {
                 throw new Error();
             }
 
@@ -266,10 +319,9 @@ that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
                         points += cardObj.cardSuitValue.value;
                     });
                 } else {
-                    const mainSuit = getMainSuit({ cards, powerCards });
-                    const seq = validateSequence({ cards, powerCards, joker, mainSuit });
+                    const seq = validateSequence({ cards });
                     if (seq?.isValid === false) {                    
-                        const set = validateSet({ cards, powerCards, joker });
+                        const set = validateSet({ cards });
                         if (set?.isValid === false) {
                             cards.forEach(cardObj => {
                                 points += cardObj.cardSuitValue.value;
@@ -287,7 +339,7 @@ that.getPlayerPoints = ({ playerCards, joker, powerCards }) => {
 }
 // Show validation END
 
-that.setAndValidateCards = ({ playerCards, cards, joker }) => {
+that.setAndValidateCards = ({ playerCards, cards, joker, powerCards }) => {
     return new Promise(async (resolve, reject) => {
         const updatedArr = [];
         for (let i = 0; i < playerCards.length; i++) {
@@ -301,7 +353,13 @@ that.setAndValidateCards = ({ playerCards, cards, joker }) => {
                 } else {
                     cards.splice(cardIdx, 1);
                     const cardSuitValue = getSuitAndValue(cardObj.card, joker);
-                    cardsGroup.push({ id: i + "-" + j, card: cardObj.card, cardSuitValue });
+                    // cardsGroup.push({ id: i + "-" + j, card: cardObj.card, cardSuitValue });
+                    cardsGroup.push({
+                        id: i + "-" + j,
+                        card: cardObj.card,
+                        cardSuitValue,
+                        isPowerCard: powerCards.includes(cardObj.card)
+                    });
                 }
             }
             updatedArr.push(cardsGroup);

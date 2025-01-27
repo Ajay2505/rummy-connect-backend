@@ -45,7 +45,7 @@ that.getPlayerState = ({ userName, matchID }) => {
     });
 }
 
-that.validatePlayerCards = ({ userName, matchID, playerCards, joker }) => {
+that.validatePlayerCards = ({ userName, matchID, playerCards, joker, powerCards }) => {
     return new Promise(async (resolve, reject) => {
         try {
             if (!userName || !matchID || !playerCards || !Array.isArray(playerCards) || !playerCards.every(Array.isArray)) {
@@ -60,6 +60,7 @@ that.validatePlayerCards = ({ userName, matchID, playerCards, joker }) => {
             const finalCards = await setAndValidateCards({ 
                 playerCards: [...playerCards],
                 joker,
+                powerCards,
                 cards: (playerState.currentState && playerState.currentState.length && Array.isArray(playerState.currentState)) ? 
                 [...playerState.currentState] : 
                 [...playerState.startState],  
@@ -227,6 +228,7 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
             const finalCards = await setAndValidateCards({ 
                 playerCards: [...playerCards],
                 joker: match.joker,
+                powerCards: match.powerCards,
                 cards: (playerState.currentState && playerState.currentState.length) ? 
                 [...playerState.currentState] : 
                 [...playerState.startState],
@@ -234,8 +236,6 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
 
             const { points } = await getPlayerPoints({
                 playerCards: [...finalCards],
-                joker: match.joker,
-                powerCards: match.powerCards,
             });
                         
             playerState.points = points || 80;

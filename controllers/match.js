@@ -589,9 +589,15 @@ that.matchShow = ({ userName, matchID, playerCards }) => {
                 throw new Error("Please wait for your turn!");
             }
 
-            const finalCards = await validatePlayerCards({ userName, matchID, playerCards, joker: match.joker });
+            const finalCards = await validatePlayerCards({
+                userName,
+                matchID,
+                playerCards,
+                joker: match.joker,
+                powerCards: match.powerCards,
+            });
             
-            await validateShow({ playerCards: [...finalCards], joker: match.joker, powerCards: match.powerCards });
+            await validateShow({ playerCards: [...finalCards] });
 
             await setPlayersPoints({
                 players: [
