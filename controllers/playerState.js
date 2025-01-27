@@ -258,6 +258,7 @@ that.calcAndSetPlayerPoints = ({ userName, playerCards, match, inGame }) => {
     });
 }
 
+//  Match Results
 that.getPlayerResults = ({ matchID }) => {
     return new Promise(async (resolve, reject) => {
         try {
@@ -272,10 +273,15 @@ that.getPlayerResults = ({ matchID }) => {
             }
 
             const playerStatesWithPoints = playerStates.map(playerState => {
-                const stateObj = playerState.toObject(); 
-                stateObj.points = playerState.points;    
-                stateObj.playerCards = playerState.playerCards;    
+                const stateObj = playerState.toObject();
+                stateObj.points = playerState.points;
+                stateObj.playerCards = playerState.playerCards;
                 stateObj.matchEndState = playerState.matchEndState;
+                
+                delete stateObj._id;
+                delete stateObj.createdAt;
+                delete stateObj.updatedAt;
+
                 return stateObj;
             });
 
@@ -306,6 +312,10 @@ that.setMatchEndPlayerStates = ({ matchID }) => {
                 stateObj.matchEndState = player.matchEndState;
                 stateObj.inGame = false;
 
+                delete stateObj._id;
+                delete stateObj.createdAt;
+                delete stateObj.updatedAt;
+                
                 updatedPlayerStates.push(stateObj);
             });
 
