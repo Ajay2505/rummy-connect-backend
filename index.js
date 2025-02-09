@@ -24,7 +24,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server, { path: '/ws',
  cors: {
-        origin: allowedOrigins,
+        origin: "*",
         methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
     },
@@ -35,7 +35,7 @@ app.use(express.json());
 connectToDataBase();
 
 const corsOptions = {
-    origin: allowedOrigins,
+    origin: "*",
     methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
 };
